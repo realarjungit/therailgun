@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Railgun (RAIL) — Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --surface: #13161e;
+    --surface2: #1a1e2a;
+    --border: rgba(255,255,255,0.07);
+    --text: #e8eaf0;
+    --muted: #7a8099;
+    --accent: #4f8ef7;
+    --green: #22d3a0;
+    --red: #f76a6a;
+    --amber: #f5a623;
+    --purple: #a78bfa;
+    --teal: #2dd4bf;
+    --radius: 12px;
+    --font: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  /* ─── HEADER ─── */
+  .header {
+    background: linear-gradient(135deg, #0f1420 0%, #13161e 60%, #1a1025 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 32px 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: linear-gradient(135deg, #4f8ef7, #a78bfa);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 18px; color: #fff; letter-spacing: -1px;
+    flex-shrink: 0;
+  }
+  .header-title h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.4px; }
+  .header-title p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    border: 1px solid;
+  }
+  .pill-blue { background: rgba(79,142,247,.12); color: #4f8ef7; border-color: rgba(79,142,247,.3); }
+  .pill-green { background: rgba(34,211,160,.12); color: #22d3a0; border-color: rgba(34,211,160,.3); }
+  .pill-amber { background: rgba(245,166,35,.12); color: #f5a623; border-color: rgba(245,166,35,.3); }
+  .pill-red { background: rgba(247,106,106,.12); color: #f76a6a; border-color: rgba(247,106,106,.3); }
+  .pill-purple { background: rgba(167,139,250,.12); color: #a78bfa; border-color: rgba(167,139,250,.3); }
+  .dot-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  /* ─── LAYOUT ─── */
+  .page { max-width: 1320px; margin: 0 auto; padding: 28px 24px 60px; }
+  .section-title {
+    font-size: 11px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+  .gap24 { margin-bottom: 28px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+  /* ─── METRIC CARDS ─── */
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .metric-card:hover { border-color: rgba(79,142,247,.3); }
+  .metric-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent-color, var(--accent));
+    opacity: .7;
+  }
+  .metric-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
+  .metric-value { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+  .metric-sub { font-size: 11px; margin-top: 4px; }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+  .neu { color: var(--amber); }
+  /* ─── SCORE CARDS ─── */
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .score-ring { position: relative; width: 90px; height: 90px; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-ring .ring-bg { fill: none; stroke: rgba(255,255,255,.07); stroke-width: 7; }
+  .score-ring .ring-fill { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+  .score-ring .ring-label {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-size: 22px; font-weight: 700; letter-spacing: -1px;
+  }
+  .score-name { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+  .score-verdict { font-size: 13px; font-weight: 600; }
+  /* ─── CHART WRAPPERS ─── */
+  .chart-wrap { position: relative; width: 100%; }
+  /* ─── INSIGHT / RISK ITEMS ─── */
+  .insight-list { display: flex; flex-direction: column; gap: 10px; }
+  .insight-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 13px; line-height: 1.55;
+    transition: border-color .2s;
+  }
+  .insight-item:hover { border-color: rgba(79,142,247,.25); }
+  .insight-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+  .insight-item strong { color: var(--text); font-weight: 600; }
+  .insight-item p { color: #a0aabb; margin-top: 2px; }
+  /* ─── TABLE ─── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .data-table thead th { text-align: left; padding: 8px 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 11px; border-bottom: 1px solid var(--border); }
+  .data-table tbody td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text); }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover { background: var(--surface2); }
+  /* ─── PROGRESS BAR ─── */
+  .prog-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .prog-row:last-child { margin-bottom: 0; }
+  .prog-label { display: flex; justify-content: space-between; font-size: 12px; }
+  .prog-label span:first-child { color: var(--muted); }
+  .prog-label span:last-child { font-weight: 600; color: var(--text); }
+  .prog-bar { height: 5px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 3px; transition: width .8s ease; }
+  /* ─── VERDICT BANNER ─── */
+  .verdict {
+    background: linear-gradient(135deg, rgba(79,142,247,.1), rgba(167,139,250,.08));
+    border: 1px solid rgba(79,142,247,.25);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .verdict h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .verdict p { font-size: 13px; color: #a0aabb; line-height: 1.65; }
+  /* ─── FOOTER ─── */
+  .footer { text-align: center; font-size: 11px; color: var(--muted); padding-top: 24px; border-top: 1px solid var(--border); margin-top: 8px; }
+  /* ─── RESPONSIVE ─── */
+  @media(max-width:900px) { .grid4,.grid5 { grid-template-columns: repeat(2,1fr); } .grid3 { grid-template-columns:1fr 1fr; } }
+  @media(max-width:640px) { .grid2,.grid3,.grid4,.grid5 { grid-template-columns:1fr; } .header { flex-direction:column; } }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">⚡</div>
+    <div class="header-title">
+      <h1>Railgun (RAIL) Analytics</h1>
+      <p>Deep research dashboard &nbsp;·&nbsp; Data as of May 2026 &nbsp;·&nbsp; Sources: DeFiLlama · CoinGecko · Messari · Kraken</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="pill pill-blue">ZK-SNARK Privacy</span>
+    <span class="pill pill-purple">Ethereum L1</span>
+    <span class="pill pill-amber">Cautiously Bullish</span>
+    <span class="pill pill-green"><span class="dot-live"></span>Live Data</span>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ PAGE ═══════════════════════════ -->
+<main class="page">
+
+  <!-- ── SUMMARY VERDICT ── -->
+  <div class="verdict">
+    <h3>🔍 Investment Summary</h3>
+    <p>Railgun is Ethereum's leading on-chain privacy middleware, built directly on L1 without bridges or L2 trust assumptions. It uses ZK-SNARK technology to shield DeFi transactions. The Ethereum Foundation integrated Railgun into its Kohaku privacy SDK (Oct 2025), and Vitalik Buterin has repeatedly used and endorsed the protocol. With $84.6M TVL, $4.9M annual fee revenue, and 13+ consecutive months of $300K+ monthly fees, Railgun shows rare signs of organic product-market fit in a sector dominated by narrative hype. At a current price of ~$1.43 (74.8% below ATH of $5.67), the risk/reward is asymmetric. The primary bull catalyst is Kohaku production wallet adoption; the primary bear case is regulatory action or Kohaku failing to ship.</p>
+  </div>
+
+  <!-- ── TOP METRICS ── -->
+  <p class="section-title gap24">Live Metrics</p>
+  <div class="grid5 gap24">
+    <div class="metric-card" style="--accent-color:#4f8ef7">
+      <div class="metric-label">Current Price</div>
+      <div class="metric-value">$1.43</div>
+      <div class="metric-sub up">↑ 45.6% past 7 days</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#22d3a0">
+      <div class="metric-label">Market Cap</div>
+      <div class="metric-value">$82M</div>
+      <div class="metric-sub neu">FDV ~$143M</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#a78bfa">
+      <div class="metric-label">TVL (DeFiLlama)</div>
+      <div class="metric-value">$84.6M</div>
+      <div class="metric-sub">#2 privacy protocol</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#f5a623">
+      <div class="metric-label">Annual Fee Revenue</div>
+      <div class="metric-value">$4.9M</div>
+      <div class="metric-sub neu">P/F ratio 16.7x</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#f76a6a">
+      <div class="metric-label">ATH (Nov 2025)</div>
+      <div class="metric-value">$5.67</div>
+      <div class="metric-sub down">↓ 74.8% from ATH</div>
+    </div>
+  </div>
+
+  <div class="grid5 gap24">
+    <div class="metric-card" style="--accent-color:#22d3a0">
+      <div class="metric-label">Staking Ratio</div>
+      <div class="metric-value">73.4%</div>
+      <div class="metric-sub up">High conviction floor</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#4f8ef7">
+      <div class="metric-label">2025 Shielded Vol.</div>
+      <div class="metric-value">$1.6B</div>
+      <div class="metric-sub up">Record year</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#a78bfa">
+      <div class="metric-label">All-Time Volume</div>
+      <div class="metric-value">$4B+</div>
+      <div class="metric-sub">Since Jan 2022</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#2dd4bf">
+      <div class="metric-label">Circ. Supply</div>
+      <div class="metric-value">58M</div>
+      <div class="metric-sub">of 100M max (58%)</div>
+    </div>
+    <div class="metric-card" style="--accent-color:#f5a623">
+      <div class="metric-label">P/TVL Ratio</div>
+      <div class="metric-value">0.97x</div>
+      <div class="metric-sub up">Below 1x — cheap</div>
+    </div>
+  </div>
+
+  <!-- ── PRICE CHART ── -->
+  <p class="section-title gap24">Price History</p>
+  <div class="card gap24">
+    <div class="card-title">RAIL / USD — Monthly Close (2021–2026)</div>
+    <div class="chart-wrap" style="height:300px">
+      <canvas id="priceChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── TVL + VOLUME CHARTS ── -->
+  <p class="section-title gap24">On-Chain Metrics</p>
+  <div class="grid2 gap24">
+    <div class="card">
+      <div class="card-title">Total Value Locked (USD Millions)</div>
+      <div class="chart-wrap" style="height:260px">
+        <canvas id="tvlChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Monthly Fee Revenue (USD Thousands)</div>
+      <div class="chart-wrap" style="height:260px">
+        <canvas id="feeChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GROWTH PROJECTION ── -->
+  <p class="section-title gap24">Growth Projection</p>
+  <div class="card gap24">
+    <div class="card-title">12-Month Forecast — Bull / Base / Bear Scenarios (USD)</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;">
+      <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:#a0aabb;"><span style="width:24px;height:3px;background:#22d3a0;display:inline-block;border-radius:2px;"></span>Bull (25%)</span>
+      <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:#a0aabb;"><span style="width:24px;height:3px;background:#4f8ef7;display:inline-block;border-radius:2px;"></span>Base (50%)</span>
+      <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:#a0aabb;"><span style="width:24px;height:3px;background:#f76a6a;display:inline-block;border-radius:2px;border:none;border-top:3px dashed #f76a6a;"></span>Bear (25%)</span>
+      <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:#f5a623;font-weight:600;">│ Forecast starts →</span>
+    </div>
+    <div class="chart-wrap" style="height:300px">
+      <canvas id="forecastChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── TOKENOMICS ── -->
+  <p class="section-title gap24">Tokenomics</p>
+  <div class="grid2 gap24">
+    <div class="card">
+      <div class="card-title">Token Distribution (100M Max Supply)</div>
+      <div class="chart-wrap" style="height:280px">
+        <canvas id="tokenomicsChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Tokenomics Strength Assessment</div>
+      <div style="margin-top:4px;">
+        <div class="prog-row">
+          <div class="prog-label"><span>Staking Ratio</span><span style="color:#22d3a0">73.4%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:73.4%;background:#22d3a0;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>Circulating / Max Supply</span><span>58%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:58%;background:#4f8ef7;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>DAO Treasury Allocation</span><span style="color:#a78bfa">50%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:50%;background:#a78bfa;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>Foundation Allocation</span><span style="color:#f5a623">25%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:25%;background:#f5a623;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>Revenue → Stakers (annual)</span><span style="color:#2dd4bf">52%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:52%;background:#2dd4bf;"></div></div>
+        </div>
+        <div class="prog-row">
+          <div class="prog-label"><span>VC / Investor Allocation</span><span style="color:#22d3a0">0%</span></div>
+          <div class="prog-bar"><div class="prog-fill" style="width:2%;background:#22d3a0;"></div></div>
+        </div>
+        <div style="margin-top:16px;padding:12px 14px;background:rgba(34,211,160,.07);border:1px solid rgba(34,211,160,.2);border-radius:8px;font-size:12.5px;color:#a0aabb;line-height:1.55;">
+          <strong style="color:#22d3a0;">No VC investors or equity holders.</strong> The Right to Privacy Foundation (non-profit) holds 25%. DAO controls 50M locked tokens unminted. Stakers earn ETH, DAI, and RAIL from the treasury — ~52% of treasury distributed annually.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCORES ── -->
+  <p class="section-title gap24">Scores & Signals</p>
+  <div class="grid4 gap24">
+    <div class="score-card">
+      <div class="score-ring">
+        <svg viewBox="0 0 90 90" width="90" height="90">
+          <circle class="ring-bg" cx="45" cy="45" r="38"/>
+          <circle class="ring-fill" cx="45" cy="45" r="38"
+            stroke="#22d3a0"
+            stroke-dasharray="238.76"
+            stroke-dashoffset="64.5"
+            id="growthRing"/>
+        </svg>
+        <div class="score-ring-label" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;font-weight:700;color:#22d3a0;">74</div>
+      </div>
+      <div class="score-name">Growth Score</div>
+      <div class="score-verdict up">Strong</div>
+    </div>
+    <div class="score-card">
+      <div class="score-ring">
+        <svg viewBox="0 0 90 90" width="90" height="90">
+          <circle class="ring-bg" cx="45" cy="45" r="38"/>
+          <circle class="ring-fill" cx="45" cy="45" r="38"
+            stroke="#f76a6a"
+            stroke-dasharray="238.76"
+            stroke-dashoffset="90.7"
+            id="riskRing"/>
+        </svg>
+        <div class="score-ring-label" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;font-weight:700;color:#f76a6a;">62</div>
+      </div>
+      <div class="score-name">Risk Score</div>
+      <div class="score-verdict down">Elevated</div>
+    </div>
+    <div class="score-card">
+      <div class="score-ring">
+        <svg viewBox="0 0 90 90" width="90" height="90">
+          <circle class="ring-bg" cx="45" cy="45" r="38"/>
+          <circle class="ring-fill" cx="45" cy="45" r="38"
+            stroke="#4f8ef7"
+            stroke-dasharray="238.76"
+            stroke-dashoffset="107.4"
+            id="organicRing"/>
+        </svg>
+        <div class="score-ring-label" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;font-weight:700;color:#4f8ef7;">55</div>
+      </div>
+      <div class="score-name">Confidence</div>
+      <div class="score-verdict" style="color:#4f8ef7">Medium</div>
+    </div>
+    <div class="score-card">
+      <div class="score-ring">
+        <svg viewBox="0 0 90 90" width="90" height="90">
+          <circle class="ring-bg" cx="45" cy="45" r="38"/>
+          <circle class="ring-fill" cx="45" cy="45" r="38"
+            stroke="#f5a623"
+            stroke-dasharray="238.76"
+            stroke-dashoffset="83.6"
+            id="adoptionRing"/>
+        </svg>
+        <div class="score-ring-label" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;font-weight:700;color:#f5a623;">65</div>
+      </div>
+      <div class="score-name">Adoption Score</div>
+      <div class="score-verdict neu" style="color:#f5a623;">Moderate+</div>
+    </div>
+  </div>
+
+  <!-- ── COMPETITIVE LANDSCAPE ── -->
+  <p class="section-title gap24">Competitive Landscape</p>
+  <div class="card gap24">
+    <div class="card-title">Privacy Protocol TVL Comparison</div>
+    <div class="chart-wrap" style="height:260px">
+      <canvas id="compChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── INSIGHTS ── -->
+  <p class="section-title gap24">Key Insights</p>
+  <div class="insight-list gap24">
+    <div class="insight-item">
+      <div class="insight-icon">💡</div>
+      <div>
+        <strong>#1 — Anonymity Set is the Hidden Compounding Moat</strong>
+        <p>Each new user permanently strengthens Railgun's privacy pool for all users. This self-reinforcing flywheel creates exponential switching costs invisible in market cap metrics. It's a network effect competitors can't buy — it must be grown organically. Unlike TVL (which can be rented with yield), privacy set size is sticky and cumulative.</p>
+      </div>
+    </div>
+    <div class="insight-item">
+      <div class="insight-icon">📊</div>
+      <div>
+        <strong>#2 — TVL-Price Decoupling Signals Infrastructure, Not Speculation</strong>
+        <p>RAIL price dropped 74.8% from its Nov 2025 ATH of $5.67, but TVL declined only ~25% (from $113M to $84.6M). In typical DeFi, TVL tracks token price almost perfectly because TVL is incentive-driven. The decoupling here means real capital stays for utility, not farming rewards. This is the fingerprint of genuine product-market fit — rare in crypto.</p>
+      </div>
+    </div>
+    <div class="insight-item">
+      <div class="insight-icon">🏗️</div>
+      <div>
+        <strong>#3 — EF Kohaku Integration is a Distribution Moat, Not Just a Narrative</strong>
+        <p>Railgun is the only privacy protocol natively embedded in the Ethereum Foundation's Kohaku SDK. When MetaMask (70M+ users) or OKX Wallet ships Kohaku support, privacy transactions route through Railgun's contracts automatically — without users ever explicitly choosing Railgun. This is embedded distribution, not opted-in usage. No competitor replicates this without years of EF trust-building.</p>
+      </div>
+    </div>
+    <div class="insight-item">
+      <div class="insight-icon">💰</div>
+      <div>
+        <strong>#4 — Real Revenue Model with No Token Emission Dependency</strong>
+        <p>Railgun earns a fixed 0.25% fee on every shield/unshield. At $151.4M/month 2025 average volume, this generates ~$378K/month (~$4.5M/yr). Critically, this revenue does not depend on RAIL token inflation, yield incentives, or VC backing. It scales directly with protocol usage. If Kohaku drives 5x volume, revenue hits ~$22M/yr — a significant re-rating catalyst at current market cap.</p>
+      </div>
+    </div>
+    <div class="insight-item">
+      <div class="insight-icon">✅</div>
+      <div>
+        <strong>#5 — 13 Consecutive Months of $300K+ Fees: The Organic Signal</strong>
+        <p>May 2025 marked the 13th straight month with over $300,000 in protocol fees and over $140M in shielded transactions. Sustained fee floors over 12+ months do not result from pump-and-dump narratives — they require consistent real usage. This is the single strongest signal of organic adoption in Railgun's history, and it predates the Oct 2025 Kohaku narrative spike.</p>
+      </div>
+    </div>
+    <div class="insight-item">
+      <div class="insight-icon">🔒</div>
+      <div>
+        <strong>#6 — Private Proofs of Innocence: Regulatory Differentiation</strong>
+        <p>Railgun's Private Proofs of Innocence system blocked the zkLend attacker from laundering $9.5M in Feb 2025. Vitalik Buterin publicly called it "a solid demonstration of the privacy pools mechanism working in practice." This compliance-grade privacy (block illicit funds without backdoors) is a feature neither Tornado Cash nor Monero offers on EVM chains — it's the key to regulatory durability.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RISKS ── -->
+  <p class="section-title gap24" style="margin-top:28px;">Risk Analysis</p>
+  <div class="grid2 gap24">
+    <div class="insight-list">
+      <div class="insight-item" style="border-color:rgba(247,106,106,.2)">
+        <div class="insight-icon">⚠️</div>
+        <div>
+          <strong style="color:#f76a6a;">Regulatory Risk</strong>
+          <p>Despite OFAC's March 2025 Tornado Cash sanction lift, any future adverse ruling targeting on-chain privacy infrastructure could impact RAIL. The protocol's association with high-profile exploits (Bittensor hack, Andrew Tate allegations) keeps regulatory risk elevated regardless of its blocking mechanisms.</p>
+        </div>
+      </div>
+      <div class="insight-item" style="border-color:rgba(247,106,106,.2)">
+        <div class="insight-icon">⚠️</div>
+        <div>
+          <strong style="color:#f76a6a;">Kohaku Execution Risk</strong>
+          <p>The entire institutional bull thesis rests on MetaMask, OKX Wallet, and other partners shipping production Kohaku integrations. The prototype was demoed at Devconnect Argentina (Nov 2025) but no production wallet has launched Kohaku as of May 2026. Corporate/institutional adoption cycles typically run 12–24 months from prototype to deployment.</p>
+        </div>
+      </div>
+      <div class="insight-item" style="border-color:rgba(245,166,35,.2)">
+        <div class="insight-icon">⚡</div>
+        <div>
+          <strong style="color:#f5a623;">Low Liquidity / Thin Market</strong>
+          <p>Daily trading volume of $400K–$600K vs $82M market cap creates a structurally thin market. A single medium-sized whale can move price 10–20% in either direction. This amplifies both upside and downside volatility, making RAIL unsuitable for large position sizes.</p>
+        </div>
+      </div>
+    </div>
+    <div class="insight-list">
+      <div class="insight-item" style="border-color:rgba(245,166,35,.2)">
+        <div class="insight-icon">⚡</div>
+        <div>
+          <strong style="color:#f5a623;">Vitalik Dependency</strong>
+          <p>RAIL price spikes 15%+ on each Vitalik Buterin on-chain transfer — indicating single-actor price dependency. Organic assets decouple from individual events over time. Until RAIL develops broader institutional buyers, it remains vulnerable to sentiment from one person's wallet activity.</p>
+        </div>
+      </div>
+      <div class="insight-item" style="border-color:rgba(245,166,35,.2)">
+        <div class="insight-icon">⚡</div>
+        <div>
+          <strong style="color:#f5a623;">Open-Source Fork Risk</strong>
+          <p>Railgun's contracts are fully open-source. Any team could fork the codebase. Aztec Network (L2 privacy) and Privacy Pools are growing alternative approaches. The moat is the anonymity set size and EF relationship — neither is technical IP that can be patented or defended through code alone.</p>
+        </div>
+      </div>
+      <div class="insight-item" style="border-color:rgba(247,106,106,.15)">
+        <div class="insight-icon">⚠️</div>
+        <div>
+          <strong style="color:#f76a6a;">Post-ATH Capital Rotation</strong>
+          <p>TVL declined from $113M ATH (Oct 2025) to $84.6M — a 25% drop driven by post-narrative capital rotation. While the decline is modest vs price, it shows that the Oct 2025 Kohaku announcement pulled forward TVL that hasn't been organically replaced. Sustainable TVL growth requires volume, not narrative.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FORECAST SCENARIOS ── -->
+  <p class="section-title gap24" style="margin-top:28px;">Forward Forecast</p>
+  <div class="grid3 gap24">
+    <div class="card" style="border-top:3px solid #22d3a0;">
+      <div class="card-title" style="color:#22d3a0;">🐂 Bull Scenario — 25% probability</div>
+      <div class="metric-value" style="font-size:28px;color:#22d3a0;margin:10px 0;">$4.00 – $5.50</div>
+      <p style="font-size:12.5px;color:#a0aabb;line-height:1.6;">MetaMask or OKX Wallet ships Kohaku in production. Monthly shielded volume exceeds $300M. Fee revenue scales to $8–10M/yr. Institutional multi-sig moves from prototype to live clients. RAIL re-rates to infrastructure multiple. TVL recovers to $160–200M.</p>
+    </div>
+    <div class="card" style="border-top:3px solid #4f8ef7;">
+      <div class="card-title" style="color:#4f8ef7;">🐋 Base Scenario — 50% probability</div>
+      <div class="metric-value" style="font-size:28px;color:#4f8ef7;margin:10px 0;">$2.00 – $3.00</div>
+      <p style="font-size:12.5px;color:#a0aabb;line-height:1.6;">Gradual Kohaku developer adoption. Monthly volume grows to $180–220M. Fee revenue ~$5–6M/yr. TVL stabilizes at $90–120M. RAIL recovers toward mid-range from current levels. No ATH retest. Regulatory environment stays neutral-to-favorable after Tornado Cash ruling.</p>
+    </div>
+    <div class="card" style="border-top:3px solid #f76a6a;">
+      <div class="card-title" style="color:#f76a6a;">🐻 Bear Scenario — 25% probability</div>
+      <div class="metric-value" style="font-size:28px;color:#f76a6a;margin:10px 0;">$0.50 – $1.00</div>
+      <p style="font-size:12.5px;color:#a0aabb;line-height:1.6;">Kohaku fails to gain wallet adoption. Adverse regulatory action targets on-chain privacy. High-profile exploit laundered through protocol triggers exchange delistings. TVL drains below $30M. Monthly volume collapses. Fee revenue falls below $1M/yr. Market de-rates RAIL to near-floor.</p>
+    </div>
+  </div>
+
+  <!-- ── HISTORICAL DATA TABLE ── -->
+  <p class="section-title gap24" style="margin-top:28px;">Historical Data Reference</p>
+  <div class="card gap24">
+    <div class="card-title">RAIL Yearly Performance Snapshot</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Year</th>
+          <th>Open</th>
+          <th>High</th>
+          <th>Low</th>
+          <th>Close</th>
+          <th>% Change</th>
+          <th>Key Event</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>2021</td>
+          <td>$0.80</td>
+          <td>$3.99</td>
+          <td>$0.31</td>
+          <td>$3.76</td>
+          <td><span class="up">+371.4%</span></td>
+          <td>TGE, initial liquidity phase</td>
+        </tr>
+        <tr>
+          <td>2022</td>
+          <td>$3.91</td>
+          <td>$3.99</td>
+          <td>$0.26</td>
+          <td>$0.47</td>
+          <td><span class="down">−88.0%</span></td>
+          <td>Bear market, Tornado Cash sanctions</td>
+        </tr>
+        <tr>
+          <td>2023</td>
+          <td>$0.46</td>
+          <td>$0.94</td>
+          <td>$0.26</td>
+          <td>$0.39</td>
+          <td><span class="down">−14.8%</span></td>
+          <td>Lazarus Group allegations, slow growth</td>
+        </tr>
+        <tr>
+          <td>2024</td>
+          <td>$0.39</td>
+          <td>$2.11</td>
+          <td>$0.31</td>
+          <td>$1.09</td>
+          <td><span class="up">+181.8%</span></td>
+          <td>TVL 460% growth, Vitalik endorsements</td>
+        </tr>
+        <tr>
+          <td>2025</td>
+          <td>$1.11</td>
+          <td>$5.67 (ATH)</td>
+          <td>$0.47</td>
+          <td>$1.89</td>
+          <td><span class="up">+71.2%</span></td>
+          <td>Kohaku integration, $4B all-time volume</td>
+        </tr>
+        <tr>
+          <td>2026 YTD</td>
+          <td>$1.82</td>
+          <td>$3.07</td>
+          <td>$0.91</td>
+          <td>$1.43</td>
+          <td><span class="down">−21.4%</span></td>
+          <td>Post-ATH consolidation, railgun_connect</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p>This dashboard is for research and informational purposes only. Not financial advice. Data sourced from DeFiLlama, CoinGecko, Messari, Kraken, Coinbase, and BeInCrypto. Analysis generated May 2026.</p>
+  </div>
+</main>
+
+<!-- ═══════════════════════════ SCRIPTS ═══════════════════════════ -->
+<script>
+(function() {
+  const GRID = 'rgba(255,255,255,0.05)';
+  const TICK = '#6b7280';
+  const FONT = "'Inter', system-ui, sans-serif";
+
+  Chart.defaults.color = TICK;
+  Chart.defaults.font.family = FONT;
+  Chart.defaults.font.size = 11;
+
+  const baseOpts = (yFmt) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1a1e2a',
+        borderColor: 'rgba(255,255,255,0.1)',
+        borderWidth: 1,
+        titleColor: '#e8eaf0',
+        bodyColor: '#a0aabb',
+        padding: 10,
+        callbacks: { label: ctx => (yFmt ? yFmt(ctx.raw) : ctx.raw) + '  ' }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: GRID },
+        ticks: { color: TICK, maxRotation: 45, font: { size: 10 } }
+      },
+      y: {
+        grid: { color: GRID },
+        ticks: { color: TICK, font: { size: 10 }, callback: yFmt || undefined }
+      }
+    }
+  });
+
+  /* ── PRICE CHART ── */
+  new Chart(document.getElementById('priceChart'), {
+    type: 'line',
+    data: {
+      labels: ['Jan 21','Apr 21','Jul 21','Oct 21','Jan 22','Apr 22','Jul 22','Oct 22',
+               'Jan 23','Apr 23','Jul 23','Oct 23','Jan 24','Apr 24','Jul 24','Oct 24',
+               'Jan 25','Apr 25','Jul 25','Aug 25','Sep 25','Oct 25','Nov 25','Dec 25',
+               'Jan 26','Feb 26','Mar 26','Apr 26','May 26'],
+      datasets: [{
+        label: 'RAIL Price',
+        data: [0.80,1.20,2.40,3.20,3.76,1.80,0.85,0.60,
+               0.47,0.48,0.52,0.45,0.39,0.55,0.80,0.95,
+               1.09,1.40,1.65,2.10,2.80,4.20,5.67,3.20,
+               1.89,1.60,1.70,1.55,1.43],
+        borderColor: '#4f8ef7',
+        backgroundColor: 'rgba(79,142,247,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.35
+      }]
+    },
+    options: {
+      ...baseOpts(v => '$' + v.toFixed(2)),
+      plugins: {
+        ...baseOpts().plugins,
+        annotation: {}
+      }
+    }
+  });
+
+  /* ── TVL CHART ── */
+  new Chart(document.getElementById('tvlChart'), {
+    type: 'line',
+    data: {
+      labels: ['Jan 24','Mar 24','May 24','Jul 24','Sep 24','Nov 24',
+               'Jan 25','Mar 25','May 25','Jul 25','Sep 25','Oct 25','Dec 25','Feb 26','May 26'],
+      datasets: [{
+        label: 'TVL $M',
+        data: [13.6,22.0,76.2,55.0,60.0,68.0,
+               75.0,82.0,90.0,98.0,105.0,113.0,88.0,80.0,84.6],
+        borderColor: '#22d3a0',
+        backgroundColor: 'rgba(34,211,160,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.35
+      }]
+    },
+    options: baseOpts(v => '$' + v.toFixed(1) + 'M')
+  });
+
+  /* ── FEE REVENUE CHART ── */
+  new Chart(document.getElementById('feeChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Q1 24','Q2 24','Q3 24','Q4 24','Q1 25','Q2 25','Q3 25','Oct 25','Q4 25','Q1 26'],
+      datasets: [{
+        label: 'Fee Revenue $K',
+        data: [110, 145, 200, 250, 320, 340, 360, 520, 380, 350],
+        backgroundColor: 'rgba(167,139,250,0.6)',
+        borderColor: '#a78bfa',
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: baseOpts(v => '$' + v + 'K')
+  });
+
+  /* ── FORECAST CHART ── */
+  new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: {
+      labels: ['Jan 26','Feb 26','Mar 26','Apr 26','May 26',
+               'Jun 26','Jul 26','Aug 26','Sep 26','Oct 26','Nov 26','Dec 26','Jan 27','Apr 27'],
+      datasets: [
+        {
+          label: 'Historical',
+          data: [1.89,1.60,1.70,1.55,1.43,null,null,null,null,null,null,null,null,null],
+          borderColor: '#e8eaf0',
+          borderWidth: 2,
+          pointRadius: 2,
+          tension: 0.3,
+          fill: false
+        },
+        {
+          label: 'Bull',
+          data: [null,null,null,null,1.43,1.90,2.40,3.00,3.60,4.20,4.70,5.00,5.30,5.50],
+          borderColor: '#22d3a0',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: false,
+          borderDash: []
+        },
+        {
+          label: 'Base',
+          data: [null,null,null,null,1.43,1.55,1.75,1.95,2.10,2.25,2.45,2.60,2.75,2.90],
+          borderColor: '#4f8ef7',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: false
+        },
+        {
+          label: 'Bear',
+          data: [null,null,null,null,1.43,1.20,1.05,0.90,0.80,0.72,0.65,0.60,0.55,0.50],
+          borderColor: '#f76a6a',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4,
+          fill: false,
+          borderDash: [6,3]
+        }
+      ]
+    },
+    options: {
+      ...baseOpts(v => '$' + v.toFixed(2)),
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          align: 'start',
+          labels: {
+            color: TICK,
+            font: { size: 11 },
+            boxWidth: 20,
+            padding: 16
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1a1e2a',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#e8eaf0',
+          bodyColor: '#a0aabb',
+          padding: 10
+        }
+      }
+    }
+  });
+
+  /* ── TOKENOMICS PIE ── */
+  new Chart(document.getElementById('tokenomicsChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['DAO Treasury (locked)', 'Foundation (Right to Privacy)', 'Community / Circulating', 'Staked RAIL', 'Unlocked / Float'],
+      datasets: [{
+        data: [50, 25, 15, 6, 4],
+        backgroundColor: [
+          'rgba(167,139,250,0.8)',
+          'rgba(245,166,35,0.8)',
+          'rgba(79,142,247,0.8)',
+          'rgba(34,211,160,0.8)',
+          'rgba(45,212,191,0.5)'
+        ],
+        borderColor: [
+          '#a78bfa','#f5a623','#4f8ef7','#22d3a0','#2dd4bf'
+        ],
+        borderWidth: 1.5,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          display: true,
+          position: 'right',
+          labels: {
+            color: TICK,
+            font: { size: 11 },
+            boxWidth: 12,
+            padding: 12
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1a1e2a',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#e8eaf0',
+          bodyColor: '#a0aabb',
+          callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + '%' }
+        }
+      }
+    }
+  });
+
+  /* ── COMPETITIVE CHART ── */
+  new Chart(document.getElementById('compChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Tornado Cash', 'Railgun', 'Aztec Connect', 'Privacy Pools', 'Hinkal', 'zkBob'],
+      datasets: [{
+        label: 'TVL ($M)',
+        data: [527, 84.6, 5.99, 5.94, 0.78, 0.25],
+        backgroundColor: [
+          'rgba(107,114,128,0.6)',
+          'rgba(79,142,247,0.75)',
+          'rgba(34,211,160,0.55)',
+          'rgba(245,166,35,0.55)',
+          'rgba(167,139,250,0.5)',
+          'rgba(45,212,191,0.5)'
+        ],
+        borderColor: ['#6b7280','#4f8ef7','#22d3a0','#f5a623','#a78bfa','#2dd4bf'],
+        borderWidth: 1.5,
+        borderRadius: 5
+      }]
+    },
+    options: {
+      ...baseOpts(v => '$' + v + 'M'),
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1e2a',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#e8eaf0',
+          bodyColor: '#a0aabb'
+        }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
